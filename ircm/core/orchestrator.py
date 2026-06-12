@@ -3,6 +3,7 @@ from pathlib import Path
 from ircm.agents.agent_a_intake import IntakeAgent
 from ircm.agents.agent_h_triage import TriageAgent
 from ircm.agents.agent_b_extraction import ExtractionAgent
+from ircm.agents.agent_c_gap_analysis import GapAnalysisAgent
 from ircm.core.audit import AuditLogger
 
 
@@ -37,9 +38,14 @@ class Orchestrator:
         agent_b.run()
         print("[2/6] Agent B Extraction complete")
 
-        print("[3/6] Agent C Gap Analysis - waiting for teammate")
-        self.audit.log(
-            "Agent C Gap Analysis skipped: teammate implementation pending.")
+        print("[3/6] Agent C Gap Analysis started")
+        agent_c = GapAnalysisAgent(
+            bundle_dir=self.bundle_dir,
+            run_dir=self.run_dir,
+            audit=self.audit,
+        )
+        agent_c.run()
+        print("[3/6] Agent C Gap Analysis complete")
 
         print("[4/6] Agent D Impact Assessment - waiting for teammate")
         self.audit.log(
