@@ -4,6 +4,7 @@ from ircm.agents.agent_a_intake import IntakeAgent
 from ircm.agents.agent_h_triage import TriageAgent
 from ircm.agents.agent_b_extraction import ExtractionAgent
 from ircm.agents.agent_c_gap_analysis import GapAnalysisAgent
+from ircm.agents.agent_d_impact import ImpactAssessmentAgent
 from ircm.core.audit import AuditLogger
 
 
@@ -47,9 +48,14 @@ class Orchestrator:
         agent_c.run()
         print("[3/6] Agent C Gap Analysis complete")
 
-        print("[4/6] Agent D Impact Assessment - waiting for teammate")
-        self.audit.log(
-            "Agent D Impact Assessment skipped: teammate implementation pending.")
+        print("[4/6] Agent D Impact Assessment started")
+        agent_d = ImpactAssessmentAgent(
+            bundle_dir=self.bundle_dir,
+            run_dir=self.run_dir,
+            audit=self.audit,
+        )
+        agent_d.run()
+        print("[4/6] Agent D Impact Assessment complete")
 
         print("[5/6] Agent E Control Mapping - waiting for teammate")
         self.audit.log(
