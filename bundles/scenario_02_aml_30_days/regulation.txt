@@ -1,0 +1,7 @@
+Financial institutions must monitor customer transactions for suspicious activity.
+
+Banks shall escalate suspicious transaction alerts to the compliance function for review.
+
+This requirement becomes effective within 30 days.
+
+Institutions must retain suspicious activity monitoring records for at least seven years.

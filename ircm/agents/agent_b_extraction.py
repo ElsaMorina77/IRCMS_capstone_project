@@ -176,7 +176,7 @@ class ExtractionAgent:
 
         if any(
             word in text_lower
-            for word in ["record", "records", "retain", "retention", "keep"]
+            for word in ["record", "records", "retain", "retention", "keep", "storage"]
         ):
             return "record_retention_requirement"
 
@@ -190,6 +190,29 @@ class ExtractionAgent:
             ]
         ):
             return "enhanced_due_diligence_requirement"
+
+        if any(
+            phrase in text_lower
+            for phrase in [
+                "escalate suspicious",
+                "alerts to the compliance function",
+                "escalation",
+                "compliance function for review",
+            ]
+        ):
+            return "alert_escalation_requirement"
+
+        if any(
+            phrase in text_lower
+            for phrase in [
+                "suspicious transaction",
+                "suspicious activity",
+                "transaction monitoring",
+                "monitor customer transactions",
+                "monitor transactions",
+            ]
+        ):
+            return "transaction_monitoring_requirement"
 
         if any(
             word in text_lower
@@ -217,8 +240,8 @@ class ExtractionAgent:
         text_lower = text.lower()
 
         if any(
-            word in text_lower
-            for word in [
+            phrase in text_lower
+            for phrase in [
                 "kyc",
                 "customer identity",
                 "verification",
@@ -229,8 +252,16 @@ class ExtractionAgent:
             return "KYC"
 
         if any(
-            word in text_lower
-            for word in ["aml", "money laundering", "suspicious transaction"]
+            phrase in text_lower
+            for phrase in [
+                "aml",
+                "money laundering",
+                "suspicious transaction",
+                "suspicious activity",
+                "transaction monitoring",
+                "alerts",
+                "compliance function",
+            ]
         ):
             return "AML"
 
