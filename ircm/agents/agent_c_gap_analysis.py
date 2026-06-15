@@ -2,7 +2,7 @@ import json
 import re
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 
 class GapAnalysisAgent:
@@ -32,6 +32,7 @@ class GapAnalysisAgent:
 
         extracted_changes = self._load_json(changes_path)
         policy_text = policies_path.read_text(encoding="utf-8")
+        policy_sections = self._split_policy_sections(policy_text)
 
         gap_findings: List[Dict[str, Any]] = []
 
@@ -39,10 +40,16 @@ class GapAnalysisAgent:
             requirement_text = change.get("requirement_text", "")
             confidence = float(change.get("confidence", 0))
 
-            coverage_score = self._calculate_coverage_score(
-                requirement_text, policy_text)
+            best_match = self._find_best_policy_match(
+                requirement_text, policy_sections)
+            coverage_score = best_match["coverage_score"]
+            matched_policy_section = best_match["matched_policy_section"]
+
             coverage_status = self._classify_coverage(
-                coverage_score, confidence)
+                coverage_score=coverage_score,
+                confidence=confidence,
+                matched_policy_section=matched_policy_section,
+            )
             severity = self._classify_severity(coverage_status, change)
             recommendation = self._recommend_action(coverage_status, change)
 
@@ -52,13 +59,18 @@ class GapAnalysisAgent:
                 "requirement_text": requirement_text,
                 "change_type": change.get("change_type"),
                 "domain": change.get("domain"),
+                "matched_policy_section": matched_policy_section,
                 "coverage_score": coverage_score,
                 "coverage_status": coverage_status,
                 "severity": severity,
                 "confidence": confidence,
                 "recommendation": recommendation,
                 "evidence_refs": change.get("evidence_refs", []),
-                "status": "open" if coverage_status in ["gap", "partially_covered", "manual_review"] else "closed",
+                "status": (
+                    "open"
+                    if coverage_status in ["gap", "partially_covered", "manual_review"]
+                    else "closed"
+                ),
             }
 
             gap_findings.append(finding)
@@ -79,15 +91,19 @@ class GapAnalysisAgent:
         with path.open("w", encoding="utf-8") as file:
             json.dump(data, file, indent=2, ensure_ascii=False)
 
-    def _calculate_coverage_score(self, requirement_text: str, policy_text: str) -> int:
+    def _find_best_policy_match(
+        self, requirement_text: str, policy_sections: List[str]
+    ) -> Dict[str, Any]:
         requirement_clean = self._normalize_text(requirement_text)
 
-        if not requirement_clean or not policy_text.strip():
-            return 0
-
-        policy_sections = self._split_policy_sections(policy_text)
+        if not requirement_clean or not policy_sections:
+            return {
+                "coverage_score": 0,
+                "matched_policy_section": "",
+            }
 
         best_score = 0
+        best_section = ""
 
         for section in policy_sections:
             section_clean = self._normalize_text(section)
@@ -98,27 +114,74 @@ class GapAnalysisAgent:
             if self._is_negative_policy_statement(section_clean, requirement_clean):
                 section_score = 0
             else:
-                direct_similarity = SequenceMatcher(
-                    None, requirement_clean, section_clean).ratio()
+                section_score = self._score_section_match(
+                    requirement_clean=requirement_clean,
+                    section_clean=section_clean,
+                )
 
-                requirement_keywords = self._extract_keywords(
-                    requirement_clean)
-                section_keywords = self._extract_keywords(section_clean)
+            if section_score > best_score:
+                best_score = section_score
+                best_section = section
 
-                if not requirement_keywords:
-                    keyword_overlap = 0
-                else:
-                    matching_keywords = requirement_keywords.intersection(
-                        section_keywords)
-                    keyword_overlap = len(
-                        matching_keywords) / len(requirement_keywords)
+        return {
+            "coverage_score": best_score,
+            "matched_policy_section": best_section,
+        }
 
-                section_score = round(
-                    ((direct_similarity * 0.30) + (keyword_overlap * 0.70)) * 100)
+    def _score_section_match(self, requirement_clean: str, section_clean: str) -> int:
+        direct_similarity = SequenceMatcher(
+            None, requirement_clean, section_clean
+        ).ratio()
 
-            best_score = max(best_score, section_score)
+        requirement_keywords = self._extract_keywords(requirement_clean)
+        section_keywords = self._extract_keywords(section_clean)
 
-        return best_score
+        if not requirement_keywords:
+            keyword_overlap = 0.0
+        else:
+            matching_keywords = requirement_keywords.intersection(
+                section_keywords)
+            keyword_overlap = len(matching_keywords) / \
+                len(requirement_keywords)
+
+        obligation_alignment = self._score_obligation_alignment(
+            requirement_clean=requirement_clean,
+            section_clean=section_clean,
+        )
+
+        score = (
+            (direct_similarity * 0.25)
+            + (keyword_overlap * 0.50)
+            + (obligation_alignment * 0.25)
+        ) * 100
+
+        return round(score)
+
+    def _score_obligation_alignment(self, requirement_clean: str, section_clean: str) -> float:
+        obligation_terms = {
+            "verify",
+            "verification",
+            "identity",
+            "due",
+            "diligence",
+            "records",
+            "retain",
+            "retention",
+            "keep",
+            "high",
+            "risk",
+        }
+
+        requirement_terms = self._extract_keywords(
+            requirement_clean).intersection(obligation_terms)
+        section_terms = self._extract_keywords(
+            section_clean).intersection(obligation_terms)
+
+        if not requirement_terms:
+            return 0.0
+
+        overlap = requirement_terms.intersection(section_terms)
+        return len(overlap) / len(requirement_terms)
 
     def _normalize_text(self, text: str) -> str:
         text = text.lower()
@@ -126,26 +189,63 @@ class GapAnalysisAgent:
         text = re.sub(r"\s+", " ", text)
         return text.strip()
 
-    def _extract_keywords(self, text: str) -> set:
+    def _extract_keywords(self, text: str) -> Set[str]:
         stop_words = {
-            "the", "a", "an", "and", "or", "to", "of", "for", "in", "on",
-            "with", "by", "is", "are", "be", "this", "that", "within",
-            "must", "shall", "required", "requires", "requirement",
-            "bank", "banks", "institution", "institutions", "financial",
-            "current", "policy", "policies", "describe", "describes"
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "to",
+            "of",
+            "for",
+            "in",
+            "on",
+            "with",
+            "by",
+            "is",
+            "are",
+            "be",
+            "this",
+            "that",
+            "within",
+            "must",
+            "shall",
+            "required",
+            "requires",
+            "requirement",
+            "bank",
+            "banks",
+            "institution",
+            "institutions",
+            "financial",
+            "current",
+            "policy",
+            "policies",
+            "describe",
+            "describes",
+            "new",
         }
 
         words = set(text.split())
         return {word for word in words if len(word) > 3 and word not in stop_words}
 
-    def _classify_coverage(self, coverage_score: int, confidence: float) -> str:
+    def _classify_coverage(
+        self,
+        coverage_score: int,
+        confidence: float,
+        matched_policy_section: str,
+    ) -> str:
         if confidence < 0.60:
             return "manual_review"
 
-        if coverage_score >= 70:
+        if not matched_policy_section:
+            return "gap"
+
+        if coverage_score >= 75:
             return "covered"
 
-        if coverage_score >= 25:
+        if coverage_score >= 30:
             return "partially_covered"
 
         return "gap"
@@ -215,7 +315,8 @@ class GapAnalysisAgent:
         ]
 
         has_negative_language = any(
-            phrase in policy_section for phrase in negative_phrases)
+            phrase in policy_section for phrase in negative_phrases
+        )
 
         if not has_negative_language:
             return False
