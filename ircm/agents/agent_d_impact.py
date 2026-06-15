@@ -193,16 +193,16 @@ class ImpactAssessmentAgent:
         coverage_status = finding.get("coverage_status", "gap")
 
         severity_score_map = {
-            "high": 60,
-            "medium": 40,
-            "low": 20,
+            "high": 45,
+            "medium": 30,
+            "low": 15,
         }
-        score = severity_score_map.get(severity, 40)
+        score = severity_score_map.get(severity, 30)
 
         if coverage_status == "gap":
-            score += 20
+            score += 15
         elif coverage_status == "partially_covered":
-            score += 10
+            score += 5
         elif coverage_status == "manual_review":
             score += 5
 
@@ -210,19 +210,19 @@ class ImpactAssessmentAgent:
         for process in impacted_processes:
             criticality = process.get("criticality", "").lower()
             if criticality == "high":
-                highest_criticality_bonus = max(highest_criticality_bonus, 20)
+                highest_criticality_bonus = max(highest_criticality_bonus, 15)
             elif criticality == "medium":
-                highest_criticality_bonus = max(highest_criticality_bonus, 10)
+                highest_criticality_bonus = max(highest_criticality_bonus, 8)
 
         score += highest_criticality_bonus
-        score += min(len(impacted_processes) * 5, 15)
+        score += min(len(impacted_processes) * 4, 10)
 
         return min(score, 100)
 
     def _classify_impact_level(self, impact_score: int) -> str:
-        if impact_score >= 75:
+        if impact_score >= 70:
             return "high"
-        if impact_score >= 45:
+        if impact_score >= 40:
             return "medium"
         return "low"
 
