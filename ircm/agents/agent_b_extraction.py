@@ -20,6 +20,14 @@ MANDATORY_KEYWORDS = [
     "kyc",
 ]
 
+DEADLINE_ONLY_PATTERNS = [
+    r"\bthis requirement becomes effective within \d+ days\b",
+    r"\beffective within \d+ days\b",
+    r"\beffective on\b",
+    r"\bcomes into force on\b",
+    r"\bmust be implemented within \d+ days\b",
+]
+
 
 class ExtractionAgent:
     """
@@ -55,9 +63,17 @@ class ExtractionAgent:
                 or item.get("paragraph")
                 or item.get("source_text")
                 or ""
-            )
+            ).strip()
 
-            if not text.strip():
+            if not text:
+                continue
+
+            if self._is_deadline_only_statement(text):
+                self._attach_deadline_to_previous_change(
+                    extracted_changes=extracted_changes,
+                    text=text,
+                    evidence_id=evidence_id,
+                )
                 continue
 
             if not self._is_requirement(text):
@@ -65,7 +81,7 @@ class ExtractionAgent:
 
             change = {
                 "change_id": f"CHG-{len(extracted_changes) + 1:03d}",
-                "requirement_text": text.strip(),
+                "requirement_text": text,
                 "change_type": self._detect_change_type(text),
                 "domain": self._detect_domain(text),
                 "jurisdiction": self._detect_jurisdiction(text),
@@ -112,12 +128,56 @@ class ExtractionAgent:
 
     def _is_requirement(self, text: str) -> bool:
         text_lower = text.lower()
-        return any(keyword in text_lower for keyword in MANDATORY_KEYWORDS)
+
+        if any(keyword in text_lower for keyword in MANDATORY_KEYWORDS):
+            return True
+
+        obligation_patterns = [
+            r"\bfinancial institutions\b",
+            r"\bbanks\b",
+            r"\binstitutions\b",
+            r"\bcustomers?\b",
+            r"\bdue diligence\b",
+            r"\brecords?\b",
+        ]
+
+        return any(re.search(pattern, text_lower) for pattern in obligation_patterns)
+
+    def _is_deadline_only_statement(self, text: str) -> bool:
+        text_lower = text.lower().strip()
+        return any(re.search(pattern, text_lower) for pattern in DEADLINE_ONLY_PATTERNS)
+
+    def _attach_deadline_to_previous_change(
+        self,
+        extracted_changes: List[Dict[str, Any]],
+        text: str,
+        evidence_id: str,
+    ) -> None:
+        if not extracted_changes:
+            return
+
+        effective_date = self._extract_effective_date(text)
+        if not effective_date:
+            return
+
+        previous_change = extracted_changes[-1]
+        previous_change["effective_date"] = effective_date
+
+        if evidence_id not in previous_change["evidence_refs"]:
+            previous_change["evidence_refs"].append(evidence_id)
+
+        previous_change["confidence"] = min(
+            round(previous_change["confidence"] + 0.05, 2),
+            1.0,
+        )
 
     def _detect_change_type(self, text: str) -> str:
         text_lower = text.lower()
 
-        if any(word in text_lower for word in ["record", "records", "retain", "retention", "keep"]):
+        if any(
+            word in text_lower
+            for word in ["record", "records", "retain", "retention", "keep"]
+        ):
             return "record_retention_requirement"
 
         if any(
@@ -131,7 +191,10 @@ class ExtractionAgent:
         ):
             return "enhanced_due_diligence_requirement"
 
-        if any(word in text_lower for word in ["kyc", "customer identity", "verification", "verify"]):
+        if any(
+            word in text_lower
+            for word in ["kyc", "customer identity", "verification", "verify"]
+        ):
             return "kyc_requirement"
 
         if "threshold" in text_lower:
@@ -153,22 +216,46 @@ class ExtractionAgent:
     def _detect_domain(self, text: str) -> str:
         text_lower = text.lower()
 
-        if any(word in text_lower for word in ["kyc", "customer identity", "verification", "customer due diligence"]):
+        if any(
+            word in text_lower
+            for word in [
+                "kyc",
+                "customer identity",
+                "verification",
+                "customer due diligence",
+                "high-risk customers",
+            ]
+        ):
             return "KYC"
 
-        if any(word in text_lower for word in ["aml", "money laundering", "suspicious transaction"]):
+        if any(
+            word in text_lower
+            for word in ["aml", "money laundering", "suspicious transaction"]
+        ):
             return "AML"
+
+        if any(
+            word in text_lower
+            for word in ["records", "retention", "effective", "deadline"]
+        ):
+            return "General Compliance"
 
         return "General Compliance"
 
     def _detect_jurisdiction(self, text: str) -> str:
         text_lower = text.lower()
 
-        if "switzerland" in text_lower or "swiss" in text_lower:
+        if re.search(r"\b(switzerland|swiss)\b", text_lower):
             return "Switzerland"
 
-        if "eu" in text_lower or "european union" in text_lower:
+        if re.search(r"\b(eu|european union)\b", text_lower):
             return "EU"
+
+        if re.search(r"\b(uk|united kingdom)\b", text_lower):
+            return "UK"
+
+        if re.search(r"\b(us|u\.s\.|usa|united states)\b", text_lower):
+            return "US"
 
         return "Unknown"
 
@@ -187,6 +274,13 @@ class ExtractionAgent:
         if slash_date_match:
             return slash_date_match.group(0)
 
+        long_date_match = re.search(
+            r"\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},\s+\d{4}\b",
+            text_lower,
+        )
+        if long_date_match:
+            return long_date_match.group(0)
+
         return None
 
     def _score_confidence(self, text: str, evidence_id: str) -> float:
@@ -197,10 +291,19 @@ class ExtractionAgent:
             score += 0.25
 
         if any(word in text_lower for word in ["effective", "within", "deadline"]):
-            score += 0.20
-
-        if any(word in text_lower for word in ["kyc", "customer", "identity", "verification"]):
             score += 0.15
+
+        if any(
+            word in text_lower
+            for word in ["kyc", "customer", "identity", "verification", "due diligence"]
+        ):
+            score += 0.15
+
+        if any(
+            word in text_lower
+            for word in ["record", "records", "retention", "retain", "keep"]
+        ):
+            score += 0.10
 
         if evidence_id:
             score += 0.10
