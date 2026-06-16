@@ -1,0 +1,3 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-020,Customer Sanctions Screening,Customers are screened during onboarding,Compliance,Retail Banking,Daily
+CTRL-021,Transaction Screening Review,Selected transactions are reviewed for sanctions risk,Compliance,Compliance,Daily

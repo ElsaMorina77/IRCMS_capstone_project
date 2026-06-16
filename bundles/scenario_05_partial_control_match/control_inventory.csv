@@ -1,0 +1,3 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-001,Basic Customer Verification,Staff verify customer identity during onboarding,Compliance,Retail Banking,Daily
+CTRL-002,Risk Information Collection,Staff collect basic customer risk information,Compliance,Retail Banking,Daily

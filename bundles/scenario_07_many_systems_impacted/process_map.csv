@@ -1,0 +1,4 @@
+process_id,process_name,business_unit,systems,criticality,keywords
+PROC-020,Customer Onboarding,Retail Banking,CRM;KYC Portal;Core Banking;Mobile Banking;Online Banking,High,customer;screening;sanctions;onboarding
+PROC-021,Transaction Processing,Operations,Core Banking;Payment Gateway;AML System;Data Warehouse;Reporting Portal,High,transaction;screening;sanctions
+PROC-022,Compliance Escalation,Compliance,Compliance Tracker;Case Management;Email System,High,escalation;failed screening;compliance
