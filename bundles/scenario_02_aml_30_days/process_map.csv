@@ -1,0 +1,4 @@
+process_id,process_name,business_unit,systems,criticality,keywords
+PROC-010,Transaction Monitoring,Operations,Monitoring Platform;Core Banking,High,transactions;monitoring;suspicious;alerts
+PROC-011,Compliance Escalation,Compliance,Compliance Tracker,High,compliance;escalation;review;alerts
+PROC-012,Record Management,Operations,Document Repository,Medium,records;retention;monitoring;storage
