@@ -1,0 +1,3 @@
+process_id,process_name,business_unit,systems,criticality,keywords
+PROC-050,Customer Onboarding,Retail Banking,CRM;KYC Portal,High,kyc;customer;onboarding;risk
+PROC-051,Compliance Review,Compliance,Compliance Tracker,Medium,due diligence;risk;review

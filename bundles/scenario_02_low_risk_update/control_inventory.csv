@@ -1,0 +1,3 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-020,Communication Template Review,Compliance reviews customer communication templates,Compliance,Compliance,Annual
+CTRL-021,Notification Language Check,Compliance checks notification wording before publication,Compliance,Compliance,As Needed

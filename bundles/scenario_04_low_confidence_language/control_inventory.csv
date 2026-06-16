@@ -1,0 +1,3 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-040,Customer Review Procedure,Staff review customer information during onboarding,Compliance,Retail Banking,Daily
+CTRL-041,Risk Monitoring Review,Compliance reviews selected higher-risk customers,Compliance,Compliance,Monthly

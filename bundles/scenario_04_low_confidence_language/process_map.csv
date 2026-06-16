@@ -1,0 +1,3 @@
+process_id,process_name,business_unit,systems,criticality,keywords
+PROC-040,Customer Onboarding,Retail Banking,CRM;KYC Portal,Medium,customer;onboarding;review
+PROC-041,Risk Monitoring,Compliance,Compliance Tracker;Risk System,Medium,monitoring;risk;review

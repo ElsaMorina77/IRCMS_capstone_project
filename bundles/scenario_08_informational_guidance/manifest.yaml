@@ -1,0 +1,11 @@
+bundle_id: scenario_08_informational_guidance
+title: Informational Regulatory Guidance
+regulation_file: regulation.txt
+current_policies_file: current_policies.md
+control_inventory_file: control_inventory.csv
+process_map_file: process_map.csv
+business_units:
+  - Compliance
+expected_result:
+  - informational_guidance
+  - no_action_required

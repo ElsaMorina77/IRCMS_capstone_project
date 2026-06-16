@@ -1,0 +1,12 @@
+bundle_id: scenario_06_policy_conflict
+title: Policy Conflict with Record Retention Requirement
+regulation_file: regulation.txt
+current_policies_file: current_policies.md
+control_inventory_file: control_inventory.csv
+process_map_file: process_map.csv
+business_units:
+  - Compliance
+  - Operations
+expected_result:
+  - policy_conflict
+  - manual_review_required

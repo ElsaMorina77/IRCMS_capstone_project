@@ -1,0 +1,3 @@
+process_id,process_name,business_unit,systems,criticality,keywords
+PROC-020,Customer Communication,Compliance,Email Platform;Website CMS,Low,communication;notification;template;customer
+PROC-021,Compliance Content Review,Compliance,Compliance Tracker,Low,review;wording;clarity
