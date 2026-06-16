@@ -1,0 +1,4 @@
+process_id,process_name,business_unit,systems,criticality,keywords
+PROC-070,Customer Onboarding,Operations,Onboarding Portal;CRM,High,customer;onboarding;activation;account
+PROC-071,Sanctions Screening,Compliance,Screening Engine;Compliance Tracker,High,sanctions;screening;results;compliance
+PROC-072,Evidence Retention,Compliance,Document Repository,Medium,evidence;retention;screening;storage

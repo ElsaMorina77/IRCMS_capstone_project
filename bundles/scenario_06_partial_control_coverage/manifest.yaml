@@ -1,0 +1,13 @@
+bundle_id: scenario_06_partial_control_coverage
+title: Partial Coverage of Address Verification Requirement
+regulation_file: regulation.txt
+current_policies_file: current_policies.md
+control_inventory_file: control_inventory.csv
+process_map_file: process_map.csv
+business_units:
+  - Retail Banking
+  - Compliance
+expected_result:
+  - partial_coverage_detected
+  - medium_impact
+  - remediation_required

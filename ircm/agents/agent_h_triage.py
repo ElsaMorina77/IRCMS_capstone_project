@@ -83,7 +83,8 @@ class TriageAgent:
         file_path = self.run_dir / filename
 
         if not file_path.exists():
-            self.log(f"Agent H warning: {filename} not found. Continuing with empty data.")
+            self.log(
+                f"Agent H warning: {filename} not found. Continuing with empty data.")
             return []
 
         try:
@@ -107,7 +108,8 @@ class TriageAgent:
         file_path = self.run_dir / filename
 
         if not file_path.exists():
-            self.log(f"Agent H warning: {filename} not found. Continuing with empty data.")
+            self.log(
+                f"Agent H warning: {filename} not found. Continuing with empty data.")
             return []
 
         try:
@@ -154,7 +156,8 @@ class TriageAgent:
                 or self.get_value(impact, "impact_level", "unknown")
             )
 
-            impact_score = self.safe_float(self.get_value(impact, "impact_score", 0))
+            impact_score = self.safe_float(
+                self.get_value(impact, "impact_score", 0))
 
             business_unit = (
                 self.get_value(impact, "business_unit", None)
@@ -166,8 +169,12 @@ class TriageAgent:
                 or self.get_value(impact, "impacted_processes", "unknown")
             )
 
-            coverage_status = self.get_value(mapping, "coverage_status", "unknown")
-            coverage_score = self.safe_float(self.get_value(mapping, "coverage_score", 0))
+            coverage_status = self.get_value(
+                mapping, "coverage_status", "unknown")
+            coverage_score = self.safe_float(
+                self.get_value(mapping, "coverage_score", 0))
+            confidence = self.safe_float(self.get_value(
+                change, "confidence", self.get_value(gap, "confidence", 0)))
             final_status = self.determine_final_status(
                 gap=gap,
                 risk_level=risk_level,
@@ -259,7 +266,8 @@ class TriageAgent:
             final_status = item.get("final_status", "")
             risk_level = str(item.get("risk_level", "")).lower()
             gap_severity = str(item.get("gap_severity", "")).lower()
-            control_status = str(item.get("control_coverage_status", "")).lower()
+            control_status = str(
+                item.get("control_coverage_status", "")).lower()
 
             if gap_severity in ["medium", "high"] or control_status in ["partial", "missing"]:
                 total_gaps += 1

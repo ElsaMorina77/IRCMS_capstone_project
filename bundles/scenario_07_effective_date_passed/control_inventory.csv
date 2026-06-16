@@ -1,0 +1,4 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-070,Post-Onboarding Screening,Operations teams perform sanctions screening after onboarding,Operations,Operations,Daily
+CTRL-071,Screening Record Entry,Screening outcomes may be entered into the compliance tracker,Compliance,Compliance,Daily
+CTRL-072,Evidence Storage,Completed screening files are stored in internal repositories,Compliance,Compliance,Daily

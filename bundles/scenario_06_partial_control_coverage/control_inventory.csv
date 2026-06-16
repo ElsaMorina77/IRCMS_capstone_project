@@ -1,0 +1,4 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-060,Address Information Capture,Customer residential address is captured during onboarding,Operations,Retail Banking,Daily
+CTRL-061,Supporting Document Review,Staff may review customer-submitted address documents,Compliance,Compliance,Daily
+CTRL-062,Onboarding Record Storage,Onboarding records are stored in the onboarding platform,Operations,Retail Banking,Daily

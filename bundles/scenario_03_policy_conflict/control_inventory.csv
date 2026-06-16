@@ -1,0 +1,4 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-020,Post-Activation Screening,Operations staff perform sanctions screening after account opening,Operations,Operations,Daily
+CTRL-021,Onboarding Approval Check,Customer activation is reviewed during onboarding,Operations,Operations,Daily
+CTRL-022,Screening Record Storage,Screening documents are stored in internal systems,Compliance,Compliance,Daily

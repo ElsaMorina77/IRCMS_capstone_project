@@ -1,0 +1,3 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-050,Cash Threshold Monitoring,Cash transactions above the documented threshold are reviewed for enhanced monitoring,Compliance,Compliance,Daily
+CTRL-051,Policy Documentation Maintenance,Compliance maintains monitoring policy documentation,Compliance,Compliance,Monthly

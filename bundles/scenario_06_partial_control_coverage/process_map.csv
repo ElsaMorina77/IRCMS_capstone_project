@@ -1,0 +1,4 @@
+process_id,process_name,business_unit,systems,criticality,keywords
+PROC-060,Customer Onboarding,Retail Banking,Onboarding Portal;CRM,High,customer;onboarding;address;approval
+PROC-061,Verification Review,Compliance,Compliance Tracker,Medium,verification;documents;review;evidence
+PROC-062,Evidence Retention,Retail Banking,Onboarding Portal;Document Repository,Medium,evidence;retention;records;storage
