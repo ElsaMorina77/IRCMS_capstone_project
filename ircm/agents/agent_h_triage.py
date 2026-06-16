@@ -149,12 +149,25 @@ class TriageAgent:
             impact = self.find_by_change_id(impacts, change_id)
             mapping = self.find_by_change_id(mappings, change_id)
 
-            risk_level = self.get_value(impact, "risk_level", "unknown")
+            risk_level = (
+                self.get_value(impact, "risk_level", None)
+                or self.get_value(impact, "impact_level", "unknown")
+            )
+
             impact_score = self.safe_float(self.get_value(impact, "impact_score", 0))
+
+            business_unit = (
+                self.get_value(impact, "business_unit", None)
+                or self.get_value(impact, "impacted_business_units", "unknown")
+            )
+
+            process_name = (
+                self.get_value(impact, "process_name", None)
+                or self.get_value(impact, "impacted_processes", "unknown")
+            )
+
             coverage_status = self.get_value(mapping, "coverage_status", "unknown")
             coverage_score = self.safe_float(self.get_value(mapping, "coverage_score", 0))
-            confidence = self.safe_float(self.get_value(change, "confidence", 1))
-
             final_status = self.determine_final_status(
                 gap=gap,
                 risk_level=risk_level,
@@ -172,8 +185,8 @@ class TriageAgent:
                     "confidence": confidence,
                     "gap_status": self.get_value(gap, "coverage_status", "unknown"),
                     "gap_severity": self.get_value(gap, "severity", "unknown"),
-                    "business_unit": self.get_value(impact, "business_unit", "unknown"),
-                    "process_name": self.get_value(impact, "process_name", "unknown"),
+                    "business_unit": business_unit,
+                    "process_name": process_name,
                     "impact_score": impact_score,
                     "risk_level": risk_level,
                     "control_id": self.get_value(mapping, "control_id", None),
@@ -202,7 +215,7 @@ class TriageAgent:
         if confidence < 0.7:
             return "legal_review_required"
 
-        if impact_score >= 4 or risk_level_lower == "high":
+        if impact_score >= 70 or risk_level_lower == "high":
             return "compliance_review_required"
 
         if coverage_lower == "missing":
@@ -251,7 +264,7 @@ class TriageAgent:
             if gap_severity in ["medium", "high"] or control_status in ["partial", "missing"]:
                 total_gaps += 1
 
-            if risk_level == "high" or item.get("impact_score", 0) >= 4:
+            if risk_level == "high" or item.get("impact_score", 0) >= 70:
                 high_risk_items += 1
 
             if final_status in ["legal_review_required", "compliance_review_required"]:
@@ -478,10 +491,10 @@ class TriageAgent:
         risk_level = str(item.get("risk_level", "")).lower()
         impact_score = item.get("impact_score", 0)
 
-        if risk_level == "high" or impact_score >= 4:
+        if risk_level == "high" or impact_score >= 70:
             return "High"
 
-        if risk_level == "medium" or impact_score >= 2.5:
+        if risk_level == "medium" or impact_score >= 40:
             return "Medium"
 
         return "Low"
@@ -490,7 +503,7 @@ class TriageAgent:
         if item.get("confidence", 1) < 0.7:
             return "Low extraction confidence requires manual legal or compliance review."
 
-        if item.get("impact_score", 0) >= 4:
+        if item.get("impact_score", 0) >= 70:
             return "High impact score requires compliance review before approval."
 
         if str(item.get("risk_level", "")).lower() == "high":
