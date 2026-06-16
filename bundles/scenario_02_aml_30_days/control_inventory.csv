@@ -1,0 +1,4 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-010,Manual Transaction Review,Operations staff review sampled transactions for anomalies,Operations,Operations,Weekly
+CTRL-011,Alert Logging,Alerts are logged in the compliance tracker,Compliance,Compliance,Daily
+CTRL-012,Record Storage,Monitoring documents are stored in internal systems,Operations,Operations,Daily
