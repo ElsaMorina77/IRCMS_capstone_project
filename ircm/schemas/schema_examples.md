@@ -1,12 +1,12 @@
-# IRCMS Shared Data Schemas
+# IRCMS Shared Schema Examples
 
-This file explains the main data objects used between agents.
+This document explains the shared data objects used by the agents.
 
 ## ContextPacket
 
 Created by Agent A.
 
-Used to describe the selected scenario bundle.
+Contains scenario metadata and file references.
 
 ## EvidenceIndex
 
@@ -14,16 +14,38 @@ Created by Agent A.
 
 Stores regulation paragraphs with evidence IDs.
 
-Example:
+## RegulatoryChange
 
-```json
-{
-  "evidence": [
-    {
-      "evidence_id": "EV-001",
-      "source_file": "regulation.txt",
-      "paragraph_number": 1,
-      "text": "Financial institutions must verify customer identity."
-    }
-  ]
-}
+Created by Agent B.
+
+Represents one extracted regulatory requirement.
+
+## GapFinding
+
+Created by Agent C.
+
+Represents whether the existing policy covers the new requirement.
+
+## ImpactAssessment
+
+Created by Agent D.
+
+Represents business/process/system impact.
+
+## ControlMapping
+
+Created by Agent E.
+
+Represents whether an existing control covers the requirement.
+
+## RemediationAction
+
+Created by Agent H.
+
+Represents the final action needed to address a gap.
+
+## Metrics
+
+Created by Agent H.
+
+Summarizes the pipeline run.
