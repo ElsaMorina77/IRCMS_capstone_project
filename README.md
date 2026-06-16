@@ -39,3 +39,25 @@ Agent E - Control Mapping
 Agent H - Triage and Final Reports
       ↓
 Generated Run Artifacts
+
+## MVP Scope
+
+This project is currently implemented as a rule-based MVP. The goal is to prove the full regulatory change pipeline before adding optional UI, LangGraph, or LLM features.
+
+## Scenario List
+
+- scenario_01_kyc_60_days
+- scenario_02_low_risk_update
+- scenario_03_deadline_passed
+- scenario_04_low_confidence_language
+- scenario_05_partial_control_match
+- scenario_06_policy_conflict
+- scenario_07_many_systems_impacted
+- scenario_08_informational_guidance
+
+## Future Improvements
+
+- LangGraph wrapper
+- Streamlit GUI
+- Optional LLM extraction in Agent B
+- Human review step for low-confidence or high-risk changes
