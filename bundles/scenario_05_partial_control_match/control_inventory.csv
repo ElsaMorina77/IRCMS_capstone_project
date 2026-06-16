@@ -1,3 +1,0 @@
-control_id,name,description,owner,business_unit,frequency
-CTRL-050,Basic Customer Verification,Staff verify customer identity during onboarding,Compliance,Retail Banking,Daily
-CTRL-051,Risk Information Collection,Staff collect basic customer risk information,Compliance,Retail Banking,Daily

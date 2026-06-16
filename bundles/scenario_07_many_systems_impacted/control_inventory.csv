@@ -1,4 +1,0 @@
-control_id,name,description,owner,business_unit,frequency
-CTRL-070,Customer Sanctions Screening,Customers are screened during onboarding,Compliance,Retail Banking,Daily
-CTRL-071,Transaction Screening Review,Selected transactions are reviewed for sanctions risk,Compliance,Compliance,Daily
-CTRL-072,Compliance Escalation Procedure,Failed screening cases are reviewed by compliance,Compliance,Compliance,Daily

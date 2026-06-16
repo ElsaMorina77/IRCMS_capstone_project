@@ -1,3 +1,0 @@
-control_id,name,description,owner,business_unit,frequency
-CTRL-030,Periodic High-Risk Review,Compliance reviews high-risk accounts on a periodic basis,Compliance,Compliance,Monthly
-CTRL-031,Monitoring Evidence Storage,Operations stores monitoring evidence in the compliance archive,Operations,Operations,Monthly

@@ -1,5 +1,0 @@
-Banks must screen all customers against updated sanctions lists before account opening and before transaction processing.
-
-Institutions shall update screening results across all customer-facing systems within 30 days.
-
-Any failed screening must be escalated to the compliance team immediately.
