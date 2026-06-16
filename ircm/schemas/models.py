@@ -74,10 +74,12 @@ class ImpactMatrix(BaseModel):
 class ControlMapping(BaseModel):
     change_id: str
     control_id: Optional[str] = None
+    control_name: Optional[str] = None
     coverage_status: str
     coverage_score: float = Field(ge=0.0, le=100.0)
     missing_elements: List[str] = []
     recommended_action: str
+    evidence_refs: List[str] = []
 
 
 class ControlMappingResult(BaseModel):
@@ -92,6 +94,7 @@ class RemediationAction(BaseModel):
     priority: str
     due_date: Optional[str] = None
     status: str = "open"
+    evidence_refs: List[str] = []
 
 
 class ExceptionItem(BaseModel):
@@ -100,6 +103,7 @@ class ExceptionItem(BaseModel):
     reason: str
     risk_level: str
     required_review: str
+    evidence_refs: List[str] = []
 
 
 class Metrics(BaseModel):
