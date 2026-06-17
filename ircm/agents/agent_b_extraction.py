@@ -162,15 +162,23 @@ class ExtractionAgent:
     def _is_explicitly_non_mandatory(self, text: str) -> bool:
         text_lower = text.lower()
 
-        if any(phrase in text_lower for phrase in NON_MANDATORY_PHRASES):
+        has_non_mandatory_phrase = any(
+            phrase in text_lower for phrase in NON_MANDATORY_PHRASES
+        )
+        has_non_mandatory_language = any(
+            keyword in text_lower for keyword in NON_MANDATORY_KEYWORDS
+        )
+        has_mandatory_language = any(
+            keyword in text_lower for keyword in MANDATORY_KEYWORDS
+        )
+
+        if has_mandatory_language:
+            return False
+
+        if has_non_mandatory_phrase:
             return True
 
-        has_non_mandatory_language = any(
-            keyword in text_lower for keyword in NON_MANDATORY_KEYWORDS)
-        has_mandatory_language = any(
-            keyword in text_lower for keyword in MANDATORY_KEYWORDS)
-
-        if has_non_mandatory_language and not has_mandatory_language:
+        if has_non_mandatory_language:
             return True
 
         return False
