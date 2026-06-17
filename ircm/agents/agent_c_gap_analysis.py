@@ -31,6 +31,8 @@ class GapAnalysisAgent:
             raise FileNotFoundError(f"Missing required input: {policies_path}")
 
         extracted_changes = self._load_json(changes_path)
+        manifest = self._load_manifest()
+        business_units = manifest.get("business_units", [])
         policy_text = policies_path.read_text(encoding="utf-8")
         policy_sections = self._split_policy_sections(policy_text)
 
@@ -59,6 +61,8 @@ class GapAnalysisAgent:
                 "requirement_text": requirement_text,
                 "change_type": change.get("change_type"),
                 "domain": change.get("domain"),
+                "business_units": business_units,
+                "effective_date": change.get("effective_date"),
                 "matched_policy_section": matched_policy_section,
                 "coverage_score": coverage_score,
                 "coverage_status": coverage_status,
@@ -86,6 +90,19 @@ class GapAnalysisAgent:
     def _load_json(self, path: Path) -> Any:
         with path.open("r", encoding="utf-8") as file:
             return json.load(file)
+
+    def _load_manifest(self) -> Dict[str, Any]:
+        manifest_path = self.bundle_dir / "manifest.yaml"
+
+        if not manifest_path.exists():
+            return {}
+
+        import yaml
+
+        with manifest_path.open("r", encoding="utf-8") as file:
+            data = yaml.safe_load(file) or {}
+
+        return data if isinstance(data, dict) else {}
 
     def _write_json(self, path: Path, data: Any) -> None:
         with path.open("w", encoding="utf-8") as file:
