@@ -63,6 +63,7 @@ class ImpactAssessmentAgent:
                 "domain": finding.get("domain"),
                 "severity": finding.get("severity"),
                 "coverage_status": finding.get("coverage_status"),
+                "effective_date": finding.get("effective_date"),
                 "impact_score": impact_score,
                 "impact_level": impact_level,
                 "impacted_processes": impacted_process_ids,
@@ -191,6 +192,7 @@ class ImpactAssessmentAgent:
     ) -> int:
         severity = finding.get("severity", "medium")
         coverage_status = finding.get("coverage_status", "gap")
+        requirement_text = finding.get("requirement_text", "").lower()
 
         severity_score_map = {
             "high": 45,
@@ -215,7 +217,40 @@ class ImpactAssessmentAgent:
                 highest_criticality_bonus = max(highest_criticality_bonus, 8)
 
         score += highest_criticality_bonus
+
+        impacted_systems = self._collect_unique_values(
+            impacted_processes, "systems", split_on=";"
+        )
+        impacted_system_count = len(impacted_systems)
+
         score += min(len(impacted_processes) * 4, 10)
+
+        if impacted_system_count >= 5:
+            score += 15
+        elif impacted_system_count >= 3:
+            score += 8
+
+        if "without delay" in requirement_text:
+            score += 10
+
+        if "effective_date" in finding and finding.get("effective_date"):
+            effective_date = str(finding.get("effective_date")).strip()
+
+            if effective_date.startswith("within_"):
+                score += 10
+            else:
+                try:
+                    from datetime import date
+
+                    effective = date.fromisoformat(effective_date)
+                    today = date.today()
+
+                    if effective < today:
+                        score += 20
+                    elif effective == today:
+                        score += 15
+                except ValueError:
+                    pass
 
         return min(score, 100)
 
