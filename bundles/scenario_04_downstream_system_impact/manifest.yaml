@@ -1,5 +1,5 @@
-bundle_id: scenario_02_aml_30_days
-title: Suspicious Transaction Monitoring Rule Effective in 30 Days
+bundle_id: scenario_04_downstream_system_impact
+title: Cross-System Customer Risk Data Synchronization Requirement
 regulation_file: regulation.txt
 current_policies_file: current_policies.md
 control_inventory_file: control_inventory.csv
@@ -8,7 +8,8 @@ reference_date: 2026-06-18
 business_units:
   - Compliance
   - Operations
+  - Technology
 expected_result:
-  - gap_detected
-  - medium_to_high_impact
+  - high_impact
+  - downstream_systems_affected
   - remediation_required

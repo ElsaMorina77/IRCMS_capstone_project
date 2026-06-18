@@ -20,6 +20,11 @@ def parse_args() -> argparse.Namespace:
         help="Path to the scenario bundle folder to process.",
     )
 
+    parser.add_argument(
+        "--run-id",
+        help="Optional stable run folder name inside runs/ for deterministic reruns.",
+    )
+
     return parser.parse_args()
 
 
@@ -34,7 +39,7 @@ def main() -> int:
             print(f"Error: Bundle folder does not exist: {bundle_dir}", file=sys.stderr)
             return 1
 
-        run_dir = create_run_dir(bundle_dir)
+        run_dir = create_run_dir(bundle_dir, run_id=args.run_id)
 
         print(f"Selected bundle: {bundle_dir}")
         print(f"Run directory: {run_dir}")

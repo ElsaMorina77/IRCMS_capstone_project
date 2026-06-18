@@ -20,12 +20,41 @@ MANDATORY_KEYWORDS = [
     "kyc",
 ]
 
+NON_MANDATORY_KEYWORDS = [
+    "should",
+    "encouraged",
+    "guidance",
+    "recommended",
+    "may",
+    "where appropriate",
+]
+
+NON_MANDATORY_PHRASES = [
+    "does not introduce new mandatory control obligations",
+    "does not introduce new mandatory obligations",
+    "for internal reviewers",
+    "written clearly",
+    "easily understandable",
+    "clear wording",
+]
+
 DEADLINE_ONLY_PATTERNS = [
     r"\bthis requirement becomes effective within \d+ days\b",
+    r"\bthis requirement became effective within \d+ days\b",
     r"\beffective within \d+ days\b",
+    r"\bthis requirement became effective on\b",
+    r"\bthis requirement becomes effective on\b",
+    r"\bbecame effective on\b",
     r"\beffective on\b",
     r"\bcomes into force on\b",
     r"\bmust be implemented within \d+ days\b",
+]
+
+THRESHOLD_UPDATE_ONLY_PATTERNS = [
+    r"\bthis threshold replaces\b",
+    r"\breplaces the previous review threshold\b",
+    r"\breplaces the previous threshold\b",
+    r"\bthe previous review threshold of\b",
 ]
 
 
@@ -68,10 +97,20 @@ class ExtractionAgent:
             if not text:
                 continue
 
+            if self._is_explicitly_non_mandatory(text):
+                continue
+
             if self._is_deadline_only_statement(text):
                 self._attach_deadline_to_previous_change(
                     extracted_changes=extracted_changes,
                     text=text,
+                    evidence_id=evidence_id,
+                )
+                continue
+
+            if self._is_threshold_update_only_statement(text):
+                self._attach_threshold_update_to_previous_change(
+                    extracted_changes=extracted_changes,
                     evidence_id=evidence_id,
                 )
                 continue
@@ -110,12 +149,6 @@ class ExtractionAgent:
             json.dump(data, file, indent=2, ensure_ascii=False)
 
     def _normalize_evidence_items(self, evidence_data: Any) -> List[Dict[str, Any]]:
-        """
-        Supports both:
-        1. A list of evidence items
-        2. A dictionary containing an evidence list under a common key
-        """
-
         if isinstance(evidence_data, list):
             return evidence_data
 
@@ -126,8 +159,35 @@ class ExtractionAgent:
 
         raise ValueError("Unsupported evidence_index.json format.")
 
+    def _is_explicitly_non_mandatory(self, text: str) -> bool:
+        text_lower = text.lower()
+
+        has_non_mandatory_phrase = any(
+            phrase in text_lower for phrase in NON_MANDATORY_PHRASES
+        )
+        has_non_mandatory_language = any(
+            keyword in text_lower for keyword in NON_MANDATORY_KEYWORDS
+        )
+        has_mandatory_language = any(
+            keyword in text_lower for keyword in MANDATORY_KEYWORDS
+        )
+
+        if has_mandatory_language:
+            return False
+
+        if has_non_mandatory_phrase:
+            return True
+
+        if has_non_mandatory_language:
+            return True
+
+        return False
+
     def _is_requirement(self, text: str) -> bool:
         text_lower = text.lower()
+
+        if self._is_explicitly_non_mandatory(text):
+            return False
 
         if any(keyword in text_lower for keyword in MANDATORY_KEYWORDS):
             return True
@@ -147,6 +207,10 @@ class ExtractionAgent:
         text_lower = text.lower().strip()
         return any(re.search(pattern, text_lower) for pattern in DEADLINE_ONLY_PATTERNS)
 
+    def _is_threshold_update_only_statement(self, text: str) -> bool:
+        text_lower = text.lower().strip()
+        return any(re.search(pattern, text_lower) for pattern in THRESHOLD_UPDATE_ONLY_PATTERNS)
+
     def _attach_deadline_to_previous_change(
         self,
         extracted_changes: List[Dict[str, Any]],
@@ -162,6 +226,25 @@ class ExtractionAgent:
 
         previous_change = extracted_changes[-1]
         previous_change["effective_date"] = effective_date
+
+        if evidence_id not in previous_change["evidence_refs"]:
+            previous_change["evidence_refs"].append(evidence_id)
+
+        previous_change["confidence"] = min(
+            round(previous_change["confidence"] + 0.05, 2),
+            1.0,
+        )
+
+    def _attach_threshold_update_to_previous_change(
+        self,
+        extracted_changes: List[Dict[str, Any]],
+        evidence_id: str,
+    ) -> None:
+        if not extracted_changes:
+            return
+
+        previous_change = extracted_changes[-1]
+        previous_change["change_type"] = "threshold_update"
 
         if evidence_id not in previous_change["evidence_refs"]:
             previous_change["evidence_refs"].append(evidence_id)

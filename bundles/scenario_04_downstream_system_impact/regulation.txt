@@ -1,0 +1,7 @@
+Financial institutions must synchronize customer risk classification updates across all systems that use customer due diligence data.
+
+Banks shall ensure that risk rating changes are propagated to onboarding, transaction monitoring, sanctions screening, alert review, case management, and reporting systems without delay.
+
+This requirement becomes effective within 30 days.
+
+Institutions must retain evidence of cross-system risk update synchronization for at least five years.

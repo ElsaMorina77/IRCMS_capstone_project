@@ -1,0 +1,6 @@
+process_id,process_name,business_unit,systems,criticality,keywords
+PROC-030,Customer Risk Classification,Compliance,Compliance Platform;Customer Master,High,risk;classification;customer;due diligence
+PROC-031,Onboarding Synchronization,Operations,Onboarding Portal;CRM;KYC Portal,High,onboarding;synchronization;customer;updates
+PROC-032,Monitoring and Screening Sync,Technology,Transaction Monitoring;Screening Engine;Alert Review;Case Management,High,monitoring;screening;alerts;case management;synchronization
+PROC-033,Regulatory Reporting,Technology,Reporting Warehouse;Compliance Tracker,Medium,reporting;regulatory;data;updates
+PROC-034,Audit Evidence Retention,Technology,Document Repository,Medium,evidence;retention;storage;synchronization

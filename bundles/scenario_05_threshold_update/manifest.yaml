@@ -1,5 +1,5 @@
-bundle_id: scenario_02_aml_30_days
-title: Suspicious Transaction Monitoring Rule Effective in 30 Days
+bundle_id: scenario_05_threshold_update
+title: Minor Threshold Update for Transaction Review
 regulation_file: regulation.txt
 current_policies_file: current_policies.md
 control_inventory_file: control_inventory.csv
@@ -9,6 +9,6 @@ business_units:
   - Compliance
   - Operations
 expected_result:
-  - gap_detected
-  - medium_to_high_impact
-  - remediation_required
+  - low_severity_change
+  - partial_or_full_coverage
+  - minimal_remediation

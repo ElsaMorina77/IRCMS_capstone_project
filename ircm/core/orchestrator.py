@@ -1,11 +1,13 @@
 from pathlib import Path
 
 from ircm.agents.agent_a_intake import IntakeAgent
-from ircm.agents.agent_h_triage import TriageAgent
 from ircm.agents.agent_b_extraction import ExtractionAgent
 from ircm.agents.agent_c_gap_analysis import GapAnalysisAgent
 from ircm.agents.agent_d_impact import ImpactAssessmentAgent
+from ircm.agents.agent_e_control_mapping import ControlMappingAgent
+from ircm.agents.agent_h_triage import TriageAgent
 from ircm.core.audit import AuditLogger
+from ircm.core.validation import validate_run_outputs
 
 
 class Orchestrator:
@@ -57,9 +59,14 @@ class Orchestrator:
         agent_d.run()
         print("[4/6] Agent D Impact Assessment complete")
 
-        print("[5/6] Agent E Control Mapping - waiting for teammate")
-        self.audit.log(
-            "Agent E Control Mapping skipped: teammate implementation pending.")
+        print("[5/6] Agent E Control Mapping started")
+        agent_e = ControlMappingAgent(
+            bundle_dir=self.bundle_dir,
+            run_dir=self.run_dir,
+            audit=self.audit,
+        )
+        agent_e.run()
+        print("[5/6] Agent E Control Mapping complete")
 
         print("[6/6] Agent H Triage started")
         agent_h = TriageAgent(
@@ -70,4 +77,6 @@ class Orchestrator:
         agent_h.run()
         print("[6/6] Agent H Triage complete")
 
+        validate_run_outputs(self.run_dir)
+        self.audit.log("Schema validation completed for run outputs.")
         self.audit.log("IRCMS pipeline completed.")

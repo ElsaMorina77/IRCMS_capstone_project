@@ -1,0 +1,7 @@
+Financial institutions must complete sanctions screening before customer account activation.
+
+Banks shall document sanctions screening results in the compliance system.
+
+This requirement became effective on 2026-01-15.
+
+Institutions must retain sanctions screening evidence for at least five years.

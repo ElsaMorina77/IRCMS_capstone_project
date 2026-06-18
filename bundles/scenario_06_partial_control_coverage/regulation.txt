@@ -1,0 +1,7 @@
+Financial institutions must verify customer residential address using reliable independent documentation before account approval.
+
+Banks shall record address verification evidence in the onboarding system.
+
+This requirement becomes effective within 90 days.
+
+Institutions must retain address verification evidence for at least five years.

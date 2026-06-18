@@ -1,0 +1,24 @@
+pipeline:
+  deterministic_mode: true
+  allow_llm_fallback: false
+
+runtime:
+  reference_date: "2026-06-18"
+
+triage:
+  low_confidence_threshold: 0.70
+  high_impact_threshold: 70
+  medium_impact_threshold: 40
+
+deadlines:
+  short_window_days: 30
+  overdue_action: Immediate
+
+impact:
+  downstream_systems_medium_threshold: 3
+  downstream_systems_high_threshold: 5
+
+reporting:
+  include_evidence_package: true
+  include_next_actions_in_exceptions: true
+  include_due_dates_in_remediation: true

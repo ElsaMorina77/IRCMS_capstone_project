@@ -1,0 +1,4 @@
+control_id,name,description,owner,business_unit,frequency
+CTRL-030,Primary Risk Update,Risk ratings are updated in the compliance platform,Compliance,Compliance,Daily
+CTRL-031,Manual Downstream Refresh,Operations teams manually refresh selected downstream systems,Operations,Operations,Weekly
+CTRL-032,Synchronization Evidence Storage,Some system update records are stored for audit review,Technology,Technology,Weekly
