@@ -1,8 +1,11 @@
 import csv
 import json
 import re
+from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Set
+
+from ircm.core.policy import get_policy_value, resolve_reference_date
 
 
 class ImpactAssessmentAgent:
@@ -19,6 +22,21 @@ class ImpactAssessmentAgent:
         self.bundle_dir = bundle_dir
         self.run_dir = run_dir
         self.audit = audit
+        self.reference_date = resolve_reference_date(bundle_dir)
+        self.medium_system_threshold = int(
+            get_policy_value(
+                "impact",
+                "downstream_systems_medium_threshold",
+                default=3,
+            )
+        )
+        self.high_system_threshold = int(
+            get_policy_value(
+                "impact",
+                "downstream_systems_high_threshold",
+                default=5,
+            )
+        )
 
     def run(self) -> None:
         gaps_path = self.run_dir / "gap_analysis.json"
@@ -66,6 +84,8 @@ class ImpactAssessmentAgent:
                 "effective_date": finding.get("effective_date"),
                 "impact_score": impact_score,
                 "impact_level": impact_level,
+                "system_count": len(impacted_systems),
+                "process_count": len(impacted_process_ids),
                 "impacted_processes": impacted_process_ids,
                 "impacted_systems": impacted_systems,
                 "impacted_business_units": impacted_business_units,
@@ -122,8 +142,11 @@ class ImpactAssessmentAgent:
                 "domain",
                 "severity",
                 "coverage_status",
+                "effective_date",
                 "impact_score",
                 "impact_level",
+                "system_count",
+                "process_count",
                 "impacted_processes",
                 "impacted_systems",
                 "impacted_business_units",
@@ -144,8 +167,11 @@ class ImpactAssessmentAgent:
                         "domain": result["domain"],
                         "severity": result["severity"],
                         "coverage_status": result["coverage_status"],
+                        "effective_date": result["effective_date"] or "",
                         "impact_score": result["impact_score"],
                         "impact_level": result["impact_level"],
+                        "system_count": result["system_count"],
+                        "process_count": result["process_count"],
                         "impacted_processes": ";".join(result["impacted_processes"]),
                         "impacted_systems": ";".join(result["impacted_systems"]),
                         "impacted_business_units": ";".join(result["impacted_business_units"]),
@@ -225,9 +251,9 @@ class ImpactAssessmentAgent:
 
         score += min(len(impacted_processes) * 4, 10)
 
-        if impacted_system_count >= 5:
+        if impacted_system_count >= self.high_system_threshold:
             score += 15
-        elif impacted_system_count >= 3:
+        elif impacted_system_count >= self.medium_system_threshold:
             score += 8
 
         if "without delay" in requirement_text:
@@ -240,14 +266,12 @@ class ImpactAssessmentAgent:
                 score += 10
             else:
                 try:
-                    from datetime import date
-
                     effective = date.fromisoformat(effective_date)
-                    today = date.today()
+                    reference_date = date.fromisoformat(self.reference_date)
 
-                    if effective < today:
+                    if effective < reference_date:
                         score += 20
-                    elif effective == today:
+                    elif effective == reference_date:
                         score += 15
                 except ValueError:
                     pass

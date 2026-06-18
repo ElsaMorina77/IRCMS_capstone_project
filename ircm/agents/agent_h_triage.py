@@ -1,7 +1,9 @@
 import csv
 import json
 from pathlib import Path
-from datetime import datetime, date
+from datetime import date
+
+from ircm.core.policy import get_policy_value, resolve_reference_date
 
 
 class TriageAgent:
@@ -35,6 +37,22 @@ class TriageAgent:
         self.bundle_dir = bundle_dir
         self.run_dir = run_dir
         self.audit = audit
+        self.reference_date = resolve_reference_date(bundle_dir)
+        self.low_confidence_threshold = float(
+            get_policy_value("triage", "low_confidence_threshold", default=self.LOW_CONFIDENCE_THRESHOLD)
+        )
+        self.high_impact_threshold = float(
+            get_policy_value("triage", "high_impact_threshold", default=self.HIGH_IMPACT_THRESHOLD)
+        )
+        self.medium_impact_threshold = float(
+            get_policy_value("triage", "medium_impact_threshold", default=self.MEDIUM_IMPACT_THRESHOLD)
+        )
+        self.short_window_days = int(
+            get_policy_value("deadlines", "short_window_days", default=30)
+        )
+        self.overdue_action = str(
+            get_policy_value("deadlines", "overdue_action", default="Immediate")
+        )
 
     def run(self) -> dict:
         self.log("Agent H Final Triage started.")
@@ -190,10 +208,10 @@ class TriageAgent:
         gap_status = str(gap.get("coverage_status", "")).lower() if gap else ""
         gap_severity = str(gap.get("severity", "")).lower() if gap else ""
 
-        if confidence < self.LOW_CONFIDENCE_THRESHOLD:
+        if confidence < self.low_confidence_threshold:
             return "legal_review_required"
 
-        if impact_score >= self.HIGH_IMPACT_THRESHOLD or risk_level_lower == "high":
+        if impact_score >= self.high_impact_threshold or risk_level_lower == "high":
             return "compliance_review_required"
 
         if coverage_lower in ["missing", "gap"]:
@@ -231,6 +249,9 @@ class TriageAgent:
         high_risk_items = 0
         exceptions = 0
         remediation_required = 0
+        overdue_items = 0
+        short_window_items = 0
+        dated_items = 0
 
         for item in change_register:
             final_status = item.get("final_status", "")
@@ -239,11 +260,12 @@ class TriageAgent:
             gap_status = str(item.get("gap_status", "")).lower()
             control_status = str(item.get("control_coverage_status", "")).lower()
             impact_score = self.safe_float(item.get("impact_score", 0))
+            effective_date = str(item.get("effective_date", "") or "").strip()
 
             if gap_status in ["gap", "partially_covered", "manual_review"] or gap_severity in ["medium", "high"] or control_status in ["partial", "partially_covered", "missing", "gap"]:
                 total_gaps += 1
 
-            if risk_level == "high" or impact_score >= self.HIGH_IMPACT_THRESHOLD:
+            if risk_level == "high" or impact_score >= self.high_impact_threshold:
                 high_risk_items += 1
 
             if final_status in ["legal_review_required", "compliance_review_required"]:
@@ -251,6 +273,23 @@ class TriageAgent:
 
             if final_status in ["new_control_required", "control_update_required", "remediation_required"]:
                 remediation_required += 1
+
+            if effective_date:
+                dated_items += 1
+                if effective_date.startswith("within_"):
+                    try:
+                        days = int(effective_date.split("_")[1])
+                        if days <= self.short_window_days:
+                            short_window_items += 1
+                    except (IndexError, ValueError):
+                        pass
+                else:
+                    try:
+                        parsed_date = date.fromisoformat(effective_date)
+                        if parsed_date < date.fromisoformat(self.reference_date):
+                            overdue_items += 1
+                    except ValueError:
+                        pass
 
         if total_changes == 0:
             pipeline_status = "no_action_required"
@@ -261,13 +300,24 @@ class TriageAgent:
         else:
             pipeline_status = "completed"
 
+        gap_rate = round((total_gaps / total_changes) * 100, 2) if total_changes else 0.0
+
         return {
-            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "total_changes": total_changes,
             "total_gaps": total_gaps,
             "high_risk_items": high_risk_items,
             "remediation_required": remediation_required,
             "exceptions": exceptions,
+            "gap_rate": gap_rate,
+            "throughput": {
+                "changes_processed": total_changes,
+                "gaps_identified": total_gaps,
+            },
+            "deadline_proximity": {
+                "dated_items": dated_items,
+                "overdue_items": overdue_items,
+                "short_window_items": short_window_items,
+            },
             "pipeline_status": pipeline_status,
         }
 
@@ -319,7 +369,6 @@ class TriageAgent:
     def build_approval_packet(self, change_register: list, metrics: dict, exceptions: list) -> dict:
         return {
             "scenario": self.bundle_dir.name,
-            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "final_status": metrics["pipeline_status"],
             "summary": {
                 "total_changes": metrics["total_changes"],
@@ -476,10 +525,10 @@ class TriageAgent:
         risk_level = str(item.get("risk_level", "")).lower()
         impact_score = self.safe_float(item.get("impact_score", 0))
 
-        if risk_level == "high" or impact_score >= self.HIGH_IMPACT_THRESHOLD:
+        if risk_level == "high" or impact_score >= self.high_impact_threshold:
             return "High"
 
-        if risk_level == "medium" or impact_score >= self.MEDIUM_IMPACT_THRESHOLD:
+        if risk_level == "medium" or impact_score >= self.medium_impact_threshold:
             return "Medium"
 
         return "Low"
@@ -497,11 +546,11 @@ class TriageAgent:
 
         try:
             effective = date.fromisoformat(effective_date)
-            today = date.today()
+            reference_date = date.fromisoformat(self.reference_date)
 
-            if effective < today:
-                return "Immediate"
-            if effective == today:
+            if effective < reference_date:
+                return self.overdue_action
+            if effective == reference_date:
                 return "Today"
 
             return effective_date
@@ -509,10 +558,10 @@ class TriageAgent:
             return effective_date
 
     def build_exception_reason(self, item: dict) -> str:
-        if item.get("confidence", 1) < self.LOW_CONFIDENCE_THRESHOLD:
+        if item.get("confidence", 1) < self.low_confidence_threshold:
             return "Low extraction confidence requires manual legal or compliance review."
 
-        if self.safe_float(item.get("impact_score", 0)) >= self.HIGH_IMPACT_THRESHOLD:
+        if self.safe_float(item.get("impact_score", 0)) >= self.high_impact_threshold:
             return "High impact score requires compliance review before approval."
 
         if str(item.get("risk_level", "")).lower() == "high":
@@ -521,10 +570,10 @@ class TriageAgent:
         return "Manual review required based on final triage status."
 
     def build_next_action(self, item: dict) -> str:
-        if item.get("confidence", 1) < self.LOW_CONFIDENCE_THRESHOLD:
+        if item.get("confidence", 1) < self.low_confidence_threshold:
             return "Send to legal or compliance for manual interpretation."
 
-        if self.safe_float(item.get("impact_score", 0)) >= self.HIGH_IMPACT_THRESHOLD:
+        if self.safe_float(item.get("impact_score", 0)) >= self.high_impact_threshold:
             return "Escalate to the compliance lead for urgent review and approval."
 
         if str(item.get("risk_level", "")).lower() == "high":
@@ -533,7 +582,7 @@ class TriageAgent:
         return "Review manually and determine the appropriate remediation path."
 
     def required_review_type(self, item: dict) -> str:
-        if item.get("confidence", 1) < self.LOW_CONFIDENCE_THRESHOLD:
+        if item.get("confidence", 1) < self.low_confidence_threshold:
             return "Legal Review"
 
         return "Compliance Review"

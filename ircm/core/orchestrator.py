@@ -7,6 +7,7 @@ from ircm.agents.agent_d_impact import ImpactAssessmentAgent
 from ircm.agents.agent_e_control_mapping import ControlMappingAgent
 from ircm.agents.agent_h_triage import TriageAgent
 from ircm.core.audit import AuditLogger
+from ircm.core.validation import validate_run_outputs
 
 
 class Orchestrator:
@@ -76,4 +77,6 @@ class Orchestrator:
         agent_h.run()
         print("[6/6] Agent H Triage complete")
 
+        validate_run_outputs(self.run_dir)
+        self.audit.log("Schema validation completed for run outputs.")
         self.audit.log("IRCMS pipeline completed.")

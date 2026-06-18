@@ -2,192 +2,190 @@
 
 ## Intelligent Regulatory Change Management System
 
-IRCMS is a prototype system that helps process regulatory changes in a structured way.
+IRCMS is a deterministic multi-agent prototype for regulatory change management.  
+It ingests a regulation or a scenario bundle, extracts structured regulatory changes, compares them with internal policy and controls, estimates business impact, and generates review-ready compliance artifacts.
 
-The idea is simple: a regulation comes in, the system reads it, extracts the important requirements, checks them against existing policies and controls, identifies possible gaps, estimates business impact, and creates final reports for review.
-
-This is not meant to be a full production compliance platform. It is an MVP that shows how a regulatory change management workflow could be automated using a multi-agent pipeline.
+The project is designed as an MVP:
+- deterministic Python rules remain the source of truth
+- agents communicate through structured files in a shared run folder
+- outputs are traceable back to evidence references
+- OCR/document-intake support exists in Agent A
 
 ---
 
-## What this project does
+## What Works
 
-The project takes a regulatory scenario bundle as input and runs it through a sequence of agents.
+The current prototype supports:
 
-Each agent has one responsibility:
+- Agent A intake and evidence normalization
+- Agent B deterministic regulatory change extraction
+- Agent C gap analysis against internal policies
+- Agent D deterministic impact scoring and process/system mapping
+- Agent E control mapping against control inventory
+- Agent H final triage and report generation
+- scenario-bundle runs end to end
+- OCR-capable image intake in Agent A when Tesseract is installed
+- PDF text extraction in Agent A when `pypdf` is installed
+- scanned PDF OCR fallback in Agent A when Tesseract and Poppler are installed
+- automated regression tests
 
-1. Read and prepare the input files
-2. Extract regulatory requirements
-3. Compare requirements with current policies
-4. Assess business and system impact
-5. Map requirements to existing controls
-6. Generate final remediation and review reports
-
-At the end, the system creates structured output files that can be reviewed by a compliance team.
+Verified scenarios include:
+- downstream system impact
+- effective date already passed
+- informational guidance with no action required
 
 ---
 
 ## Pipeline
 
-The system follows this workflow:
-
 ```text
-Scenario Bundle
-      ↓
-Agent A - Intake
-      ↓
+Scenario Bundle / Regulation Input
+        |
+        v
+Agent A - Intake and Evidence Indexing
+        |
+        v
 Agent B - Change Extraction
-      ↓
+        |
+        v
 Agent C - Gap Analysis
-      ↓
+        |
+        v
 Agent D - Impact Assessment
-      ↓
+        |
+        v
 Agent E - Control Mapping
-      ↓
-Agent H - Final Triage and Reports
-      ↓
-Generated Artifacts
-Agents
-Agent A - Intake
+        |
+        v
+Agent H - Triage and Final Reports
+        |
+        v
+Run Artifacts
+```
 
-Agent A reads the selected scenario bundle and validates that the required files exist.
+---
 
-It creates:
+## Agents
 
-context_packet.json
-evidence_index.json
+### Agent A - Intake
 
-Agent A also supports different input formats for the regulation file. It can work with normal text files, markdown files, PDFs, images, and basic HTML input. The goal of Agent A is to normalize different input sources into the same evidence_index.json format so the rest of the pipeline can work normally.
+Agent A validates bundle inputs and converts the regulation source into a normalized `evidence_index.json`.
 
-Supported regulation input types:
+Current supported regulation sources:
+- `.txt`
+- `.md`
+- `.html`
+- `.htm`
+- `.pdf`
+- `.png`
+- `.jpg`
+- `.jpeg`
+- `.bmp`
+- `.tif`
+- `.tiff`
+- basic `http/https` HTML or PDF URLs
 
-.txt
-.md
-.pdf
-.png
-.jpg
-.jpeg
-.tif
-.tiff
-.bmp
-.html
-.htm
+Agent A output:
+- `context_packet.json`
+- `evidence_index.json`
 
-PDF support tries to extract text first. If the PDF is scanned and has no selectable text, OCR can be used as a fallback if the required OCR tools are installed.
+Notes:
+- born-digital PDFs use text extraction first
+- scanned PDFs can fall back to OCR
+- images use OCR
+- all sources are normalized into the same evidence structure for downstream agents
 
-Agent B - Change Extraction
+### Agent B - Change Extraction
 
-Agent B reads the evidence index and extracts regulatory changes or requirements.
+Agent B reads `evidence_index.json` and writes `extracted_changes.json`.
 
-It creates:
+Current extraction behavior includes:
+- deterministic keyword/rule-based extraction
+- confidence scoring
+- effective date detection
+- threshold-update attachment
+- effective-date support-line attachment
+- filtering of non-mandatory informational guidance
 
-extracted_changes.json
+### Agent C - Gap Analysis
 
-This output includes extracted requirement text, change type, domain, confidence, and evidence references.
+Agent C compares extracted changes against internal policy text and writes `gap_analysis.json`.
 
-Agent C - Gap Analysis
+Current behavior includes:
+- deterministic coverage classification
+- severity assignment
+- recommendation generation
+- effective date pass-through
+- business-unit attachment
 
-Agent C compares the extracted changes with the current internal policies.
+### Agent D - Impact Assessment
 
-It creates:
+Agent D maps findings to processes, systems, and business units, then writes:
+- `impact_assessment.json`
+- `impact_matrix.csv`
 
-gap_analysis.json
+Current scoring considers:
+- severity
+- coverage status
+- process criticality
+- number of impacted processes
+- number of impacted systems
+- short implementation windows
+- overdue effective dates
 
-This helps identify whether the current policy already covers the new requirement, partially covers it, or does not cover it.
+### Agent E - Control Mapping
 
-Agent D - Impact Assessment
+Agent E compares extracted changes with the control inventory and writes `control_mapping.json`.
 
-Agent D checks how much impact a regulatory change may have on the business.
+Current behavior includes:
+- best-match control search
+- coverage scoring
+- partial / missing control detection
+- recommended action generation
 
-It creates:
+### Agent H - Final Triage and Reports
 
-impact_matrix.csv
+Agent H combines upstream outputs and writes:
+- `change_register.json`
+- `metrics.json`
+- `remediation_plan.md`
+- `exceptions.md`
+- `approval_packet.json`
 
-This includes impacted processes, systems, business units, impact score, and impact level.
+Current reporting includes:
+- final statuses
+- review routing
+- remediation actions with due dates
+- exceptions with next actions
+- approval packet with evidence package
+- throughput, gap rate, and deadline-proximity metrics
 
-Agent E - Control Mapping
+---
 
-Agent E compares the regulatory changes with the control inventory.
+## Scenario Bundle Format
 
-It creates:
+A scenario bundle contains the inputs for one regulatory case.
 
-control_mapping.json
+Typical bundle contents:
+- `manifest.yaml`
+- `regulation.txt` or another supported regulation file
+- `current_policies.md`
+- `control_inventory.csv`
+- `process_map.csv`
 
-This shows whether existing controls fully cover, partially cover, or miss the new requirement.
+Optional:
+- `jurisdiction_scope_file`
 
-Agent H - Final Triage and Reports
+Example `manifest.yaml`:
 
-Agent H combines the outputs from the previous agents and creates the final reports.
-
-It creates:
-
-change_register.json
-metrics.json
-remediation_plan.md
-exceptions.md
-approval_packet.json
-
-Agent H is the final step of the workflow. It summarizes the results, identifies items that need review, and creates remediation actions.
-
-Project Structure
-IRCMS_capstone_project/
-│
-├── main.py
-├── requirements.txt
-├── README.md
-│
-├── bundles/
-│   └── scenario_01_kyc_60_days/
-│       ├── manifest.yaml
-│       ├── regulation.txt
-│       ├── current_policies.md
-│       ├── control_inventory.csv
-│       └── process_map.csv
-│
-├── ircm/
-│   ├── agents/
-│   │   ├── agent_a_intake.py
-│   │   ├── agent_b_extraction.py
-│   │   ├── agent_c_gap_analysis.py
-│   │   ├── agent_d_impact.py
-│   │   ├── agent_e_control_mapping.py
-│   │   └── agent_h_triage.py
-│   │
-│   └── core/
-│       ├── audit.py
-│       ├── file_utils.py
-│       └── orchestrator.py
-│
-├── runs/
-│   └── .gitkeep
-│
-└── tests/
-Scenario Bundles
-
-A scenario bundle is a folder that contains all input files needed for one regulatory case.
-
-A normal bundle contains:
-
-manifest.yaml
-regulation.txt
-current_policies.md
-control_inventory.csv
-process_map.csv
-
-Example:
-
-bundles/scenario_01_kyc_60_days/
-
-The manifest.yaml file tells the system which files to use.
-
-Example:
-
+```yaml
 bundle_id: scenario_01_kyc_60_days
 title: New KYC Requirement Effective in 60 Days
 regulation_file: regulation.txt
 current_policies_file: current_policies.md
 control_inventory_file: control_inventory.csv
 process_map_file: process_map.csv
+reference_date: 2026-06-18
 business_units:
   - Retail Banking
   - Compliance
@@ -195,36 +193,105 @@ expected_result:
   - gap_detected
   - high_impact
   - remediation_required
+```
 
-If the regulation is an HTML file, PDF, or image, only the regulation_file value needs to change.
+If you want to test HTML, PDF, or OCR, only `regulation_file` needs to point to that source.
 
-Example:
+---
 
-regulation_file: regulation.html
+## Project Structure
 
-or:
+```text
+IRCMS_capstone_project/
+|
+|-- main.py
+|-- requirements.txt
+|-- README.md
+|
+|-- bundles/
+|-- runs/
+|-- tests/
+|
+`-- ircm/
+    |-- agents/
+    |   |-- agent_a_intake.py
+    |   |-- agent_b_extraction.py
+    |   |-- agent_c_gap_analysis.py
+    |   |-- agent_d_impact.py
+    |   |-- agent_e_control_mapping.py
+    |   `-- agent_h_triage.py
+    |
+    |-- core/
+    |   |-- audit.py
+    |   |-- file_utils.py
+    |   |-- orchestrator.py
+    |   `-- validation.py
+    |
+    |-- policies/
+    |   `-- rules.yaml
+    |
+    `-- schemas/
+        |-- models.py
+        `-- schema_examples.md
+```
 
-regulation_file: regulation.pdf
-How to Run
-1. Create a virtual environment
+---
 
-Python 3.11 is recommended.
+## Installation
 
-py -3.11 -m venv .venv
+### Python dependencies
 
-Activate it on Windows:
-
-.venv\Scripts\activate
-2. Install dependencies
+```powershell
 python -m pip install -r requirements.txt
+```
 
-Some OCR features may require extra system tools such as Tesseract OCR or Poppler. The normal text-based pipeline does not require those tools.
+### Optional OCR / PDF system tools
 
-3. Run the pipeline
-python main.py --bundle bundles/scenario_01_kyc_60_days
+For OCR and scanned PDF support on Windows, install:
 
-Expected output:
+- Tesseract OCR
+- Poppler
 
+Example with `winget`:
+
+```powershell
+winget install --id UB-Mannheim.TesseractOCR -e
+winget install --id oschwartz10612.Poppler -e
+```
+
+If the executables are not immediately available in the current shell, add them to `PATH` for the session:
+
+```powershell
+$env:Path += ";C:\Program Files\Tesseract-OCR"
+$env:Path += ";C:\Users\DELL\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-25.07.0\Library\bin"
+```
+
+Verify:
+
+```powershell
+tesseract --version
+pdftoppm -h
+```
+
+---
+
+## How To Run
+
+Run one scenario bundle:
+
+```powershell
+python main.py --bundle bundles\scenario_01_kyc_60_days
+```
+
+Run with a stable output folder for deterministic reruns:
+
+```powershell
+python main.py --bundle bundles\scenario_01_kyc_60_days --run-id review_s01
+```
+
+Example successful output:
+
+```text
 IRCMS project started.
 Selected bundle: bundles\scenario_01_kyc_60_days
 Run directory: runs\<timestamp>_scenario_01_kyc_60_days
@@ -241,92 +308,69 @@ Run directory: runs\<timestamp>_scenario_01_kyc_60_days
 [6/6] Agent H Triage started
 [6/6] Agent H Triage complete
 Pipeline completed.
-Generated Outputs
+```
 
-Each run creates a new timestamped folder inside:
+By default, each run creates a timestamped folder inside `runs/`.
+If you pass `--run-id`, the pipeline writes to a stable folder name for reproducible reruns.
 
-runs/
+---
 
-Example:
+## Generated Artifacts
 
-runs/20260618_034734_scenario_01_kyc_60_days/
+A successful run typically generates:
 
-A successful run should generate files like:
+- `audit_log.md`
+- `context_packet.json`
+- `evidence_index.json`
+- `extracted_changes.json`
+- `gap_analysis.json`
+- `impact_assessment.json`
+- `impact_matrix.csv`
+- `control_mapping.json`
+- `change_register.json`
+- `metrics.json`
+- `remediation_plan.md`
+- `exceptions.md`
+- `approval_packet.json`
 
-audit_log.md
-context_packet.json
-evidence_index.json
-extracted_changes.json
-gap_analysis.json
-impact_matrix.csv
-control_mapping.json
-change_register.json
-metrics.json
-remediation_plan.md
-exceptions.md
-approval_packet.json
-Important Output Files
-audit_log.md
+---
 
-Shows what happened during the pipeline run.
+## Testing
 
-evidence_index.json
+Run all tests:
 
-Contains the regulation text split into evidence items.
+```powershell
+pytest tests -q
+```
 
-extracted_changes.json
+Current regression coverage includes:
+- Agent B ignores non-mandatory guidance
+- Agent B attaches threshold and effective-date support lines
+- Agent D raises impact for overdue effective dates
 
-Contains the regulatory requirements extracted by Agent B.
+---
 
-gap_analysis.json
+## Current Limitations
 
-Shows policy gaps found by Agent C.
+The project is a strong prototype, but some advanced features are still future work:
 
-impact_matrix.csv
+- PDF/image evidence now includes basic page-level source pointers, but not fine-grained paragraph-level legal bounding boxes
+- OCR quality depends on document quality and Tesseract output
+- business-unit mapping is heuristic, not fully finding-specific in all cases
+- LangGraph / LangChain integration is planned but not implemented
 
-Shows impacted processes, systems, business units, and impact level.
+---
 
-control_mapping.json
+## Future Direction
 
-Shows whether existing controls cover the extracted requirements.
+Planned future improvements:
+- LangGraph as workflow skeleton
+- LangChain only for controlled fallback/helper calls
+- normalized evidence contract across TXT / HTML / PDF / OCR inputs
+- stronger runtime schema enforcement
+- better OCR cleanup and ambiguity fallback
 
-remediation_plan.md
-
-Human-readable remediation actions.
-
-metrics.json
-
-Summary of the final results.
-
-approval_packet.json
-
-Final structured packet for review and approval.
-
-OCR and Document Intake
-
-Agent A supports document intake as an optional feature.
-
-The normal and safest input is still a plain text file:
-
-regulation.txt
-
-For PDFs:
-
-regulation_file: regulation.pdf
-
-For HTML:
-
-regulation_file: regulation.html
-
-For image OCR:
-
-regulation_file: regulation.png
-
-The rest of the pipeline does not change because Agent A always creates the same evidence_index.json format.
-
-OCR support may require extra setup:
-
-Tesseract OCR
-Poppler for scanned PDFs
-
-If these tools are not installed, the text-based pipeline still works.
+Design principle:
+- LLM may suggest
+- Python rules must validate
+- final compliance decisions stay deterministic

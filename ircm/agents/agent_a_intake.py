@@ -9,6 +9,8 @@ from urllib.parse import urlparse
 
 import yaml
 
+from ircm.core.policy import resolve_reference_date
+
 
 TEXT_EXTENSIONS = {".txt", ".md"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
@@ -76,6 +78,7 @@ class IntakeAgent:
         self.bundle_dir = Path(bundle_dir)
         self.run_dir = Path(run_dir)
         self.audit = audit
+        self.reference_date = resolve_reference_date(self.bundle_dir)
 
     def run(self) -> dict:
         self.log("Agent A Intake started.")
@@ -102,6 +105,7 @@ class IntakeAgent:
             source_type=regulation_result["source_type"],
             extraction_method=regulation_result["extraction_method"],
             ocr_used=regulation_result["ocr_used"],
+            evidence_segments=regulation_result.get("segments"),
         )
 
         self.write_json("context_packet.json", context_packet)
@@ -167,6 +171,14 @@ class IntakeAgent:
             if not file_path.exists():
                 raise FileNotFoundError(f"Missing required bundle file: {file_path}")
 
+        jurisdiction_scope_file = manifest.get("jurisdiction_scope_file")
+        if jurisdiction_scope_file:
+            scope_path = self.bundle_dir / jurisdiction_scope_file
+            if not scope_path.exists():
+                raise FileNotFoundError(
+                    f"Missing optional jurisdiction scope file: {scope_path}"
+                )
+
     # ---------------------------------------------------------
     # Regulation text extraction
     # ---------------------------------------------------------
@@ -211,11 +223,13 @@ class IntakeAgent:
             return self.extract_from_pdf(file_path)
 
         if extension in IMAGE_EXTENSIONS:
+            image_text = self.extract_text_from_image(file_path)
             return {
-                "text": self.extract_text_from_image(file_path),
+                "text": image_text,
                 "source_type": "image",
                 "extraction_method": "image_ocr",
                 "ocr_used": True,
+                "segments": self.extract_image_segments(file_path, image_text),
             }
 
         raise ValueError(
@@ -343,7 +357,10 @@ class IntakeAgent:
 
         self.log(f"Agent A extracting PDF text from: {file_path}")
 
-        pdf_text = self.extract_text_from_digital_pdf(file_path)
+        pdf_segments = self.extract_text_from_digital_pdf(file_path)
+        pdf_text = "\n\n".join(
+            segment["text"] for segment in pdf_segments if segment.get("text", "").strip()
+        )
 
         if self.has_enough_text(pdf_text):
             return {
@@ -351,45 +368,65 @@ class IntakeAgent:
                 "source_type": "pdf",
                 "extraction_method": "pdf_text_extraction",
                 "ocr_used": False,
+                "segments": pdf_segments,
             }
 
         self.log(
             "Agent A PDF text extraction produced little/no text. Trying OCR fallback."
         )
 
-        ocr_text = self.extract_text_from_scanned_pdf(file_path)
+        ocr_segments = self.extract_text_from_scanned_pdf(file_path)
+        ocr_text = "\n\n".join(
+            segment["text"] for segment in ocr_segments if segment.get("text", "").strip()
+        )
 
         return {
             "text": ocr_text,
             "source_type": "pdf",
             "extraction_method": "pdf_ocr_fallback",
             "ocr_used": True,
+            "segments": ocr_segments,
         }
 
-    def extract_text_from_digital_pdf(self, file_path: Path) -> str:
+    def extract_text_from_digital_pdf(self, file_path: Path) -> list:
         try:
             from pypdf import PdfReader
         except ImportError as error:
             self.log("Agent A warning: pypdf is not installed.")
-            return ""
+            return []
 
         try:
             reader = PdfReader(str(file_path))
-            pages_text = []
+            segments = []
 
-            for page in reader.pages:
+            for page_number, page in enumerate(reader.pages, start=1):
                 page_text = page.extract_text() or ""
+                bbox = None
+
+                if getattr(page, "mediabox", None):
+                    bbox = {
+                        "x0": float(page.mediabox.left),
+                        "y0": float(page.mediabox.bottom),
+                        "x1": float(page.mediabox.right),
+                        "y1": float(page.mediabox.top),
+                    }
 
                 if page_text.strip():
-                    pages_text.append(page_text)
+                    segments.append(
+                        {
+                            "text": page_text,
+                            "page_number": page_number,
+                            "bbox": bbox,
+                        }
+                    )
 
-            return "\n\n".join(pages_text)
+            return segments
 
         except Exception as error:
             self.log(f"Agent A warning: PDF text extraction failed: {error}")
-            return ""
+            return []
 
-    def extract_text_from_scanned_pdf(self, file_path: Path) -> str:
+    def extract_text_from_scanned_pdf(self, file_path: Path) -> list:
         try:
             from pdf2image import convert_from_path
         except ImportError:
@@ -421,11 +458,22 @@ class IntakeAgent:
             text = pytesseract.image_to_string(page)
 
             if text.strip():
-                extracted_pages.append(text)
+                extracted_pages.append(
+                    {
+                        "text": text,
+                        "page_number": index,
+                        "bbox": {
+                            "x0": 0,
+                            "y0": 0,
+                            "x1": page.width,
+                            "y1": page.height,
+                        },
+                    }
+                )
 
             self.log(f"Agent A OCR processed PDF page {index}.")
 
-        return "\n\n".join(extracted_pages)
+        return extracted_pages
 
     # ---------------------------------------------------------
     # Image OCR support
@@ -456,22 +504,50 @@ class IntakeAgent:
         except Exception as error:
             raise RuntimeError(f"Image OCR failed for {file_path}: {error}")
 
+    def extract_image_segments(self, file_path: Path, text: str) -> list:
+        try:
+            from PIL import Image
+
+            image = Image.open(file_path)
+            width, height = image.size
+        except Exception:
+            width, height = 0, 0
+
+        return [
+            {
+                "text": text,
+                "page_number": 1,
+                "bbox": {
+                    "x0": 0,
+                    "y0": 0,
+                    "x1": width,
+                    "y1": height,
+                },
+            }
+        ]
+
     # ---------------------------------------------------------
     # Evidence and output creation
     # ---------------------------------------------------------
 
     def create_context_packet(self, manifest: dict, regulation_result: dict) -> dict:
+        source_files = {
+            "regulation": manifest["regulation_file"],
+            "current_policies": manifest["current_policies_file"],
+            "control_inventory": manifest["control_inventory_file"],
+            "process_map": manifest["process_map_file"],
+        }
+
+        if manifest.get("jurisdiction_scope_file"):
+            source_files["jurisdiction_scope"] = manifest["jurisdiction_scope_file"]
+
         return {
             "bundle_id": manifest.get("bundle_id"),
             "title": manifest.get("title"),
             "business_units": manifest.get("business_units", []),
             "expected_result": manifest.get("expected_result", []),
-            "source_files": {
-                "regulation": manifest["regulation_file"],
-                "current_policies": manifest["current_policies_file"],
-                "control_inventory": manifest["control_inventory_file"],
-                "process_map": manifest["process_map_file"],
-            },
+            "source_files": source_files,
+            "reference_date": self.reference_date,
             "intake_metadata": {
                 "regulation_source_type": regulation_result["source_type"],
                 "extraction_method": regulation_result["extraction_method"],
@@ -486,7 +562,17 @@ class IntakeAgent:
         source_type: str,
         extraction_method: str,
         ocr_used: bool,
+        evidence_segments: Optional[list] = None,
     ) -> list:
+        if evidence_segments:
+            return self._build_evidence_from_segments(
+                evidence_segments=evidence_segments,
+                source_file=source_file,
+                source_type=source_type,
+                extraction_method=extraction_method,
+                ocr_used=ocr_used,
+            )
+
         paragraphs = self.split_into_paragraphs(regulation_text)
 
         evidence_items = []
@@ -501,6 +587,37 @@ class IntakeAgent:
                     "ocr_used": ocr_used,
                     "paragraph_number": index,
                     "text": paragraph,
+                }
+            )
+
+        return evidence_items
+
+    def _build_evidence_from_segments(
+        self,
+        evidence_segments: list,
+        source_file: str,
+        source_type: str,
+        extraction_method: str,
+        ocr_used: bool,
+    ) -> list:
+        evidence_items = []
+
+        for index, segment in enumerate(evidence_segments, start=1):
+            text = self.clean_whitespace(segment.get("text", ""))
+            if not text:
+                continue
+
+            evidence_items.append(
+                {
+                    "evidence_id": f"EV-{index:03d}",
+                    "source_file": source_file,
+                    "source_type": source_type,
+                    "extraction_method": extraction_method,
+                    "ocr_used": ocr_used,
+                    "paragraph_number": index,
+                    "page_number": segment.get("page_number"),
+                    "bbox": segment.get("bbox"),
+                    "text": text,
                 }
             )
 

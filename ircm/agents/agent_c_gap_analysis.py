@@ -22,6 +22,7 @@ class GapAnalysisAgent:
     def run(self) -> None:
         changes_path = self.run_dir / "extracted_changes.json"
         policies_path = self.bundle_dir / "current_policies.md"
+        process_map_path = self.bundle_dir / "process_map.csv"
         output_path = self.run_dir / "gap_analysis.json"
 
         if not changes_path.exists():
@@ -32,9 +33,10 @@ class GapAnalysisAgent:
 
         extracted_changes = self._load_json(changes_path)
         manifest = self._load_manifest()
-        business_units = manifest.get("business_units", [])
+        bundle_business_units = manifest.get("business_units", [])
         policy_text = policies_path.read_text(encoding="utf-8")
         policy_sections = self._split_policy_sections(policy_text)
+        process_rows = self._load_process_map(process_map_path) if process_map_path.exists() else []
 
         gap_findings: List[Dict[str, Any]] = []
 
@@ -54,6 +56,11 @@ class GapAnalysisAgent:
             )
             severity = self._classify_severity(coverage_status, change)
             recommendation = self._recommend_action(coverage_status, change)
+            business_units = self._derive_business_units(
+                change=change,
+                process_rows=process_rows,
+                fallback_units=bundle_business_units,
+            )
 
             finding = {
                 "finding_id": f"GAP-{index:03d}",
@@ -107,6 +114,25 @@ class GapAnalysisAgent:
     def _write_json(self, path: Path, data: Any) -> None:
         with path.open("w", encoding="utf-8") as file:
             json.dump(data, file, indent=2, ensure_ascii=False)
+
+    def _load_process_map(self, path: Path) -> List[Dict[str, str]]:
+        import csv
+
+        rows: List[Dict[str, str]] = []
+
+        with path.open("r", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                rows.append(
+                    {
+                        "process_id": row.get("process_id", "").strip(),
+                        "process_name": row.get("process_name", "").strip(),
+                        "business_unit": row.get("business_unit", "").strip(),
+                        "keywords": row.get("keywords", "").strip(),
+                    }
+                )
+
+        return rows
 
     def _find_best_policy_match(
         self, requirement_text: str, policy_sections: List[str]
@@ -173,6 +199,38 @@ class GapAnalysisAgent:
         ) * 100
 
         return round(score)
+
+    def _derive_business_units(
+        self,
+        change: Dict[str, Any],
+        process_rows: List[Dict[str, str]],
+        fallback_units: List[str],
+    ) -> List[str]:
+        if not process_rows:
+            return fallback_units
+
+        requirement_text = change.get("requirement_text", "")
+        change_type = change.get("change_type", "")
+        domain = change.get("domain", "")
+
+        requirement_keywords = self._extract_keywords(self._normalize_text(requirement_text))
+        signal_keywords = self._change_type_keywords(change_type, domain)
+
+        matched_units: List[str] = []
+
+        for row in process_rows:
+            row_keywords = self._extract_keywords(
+                self._normalize_text(
+                    f"{row.get('process_name', '')} {row.get('keywords', '')}"
+                )
+            )
+
+            if requirement_keywords.intersection(row_keywords) or signal_keywords.intersection(row_keywords):
+                business_unit = row.get("business_unit", "").strip()
+                if business_unit and business_unit not in matched_units:
+                    matched_units.append(business_unit)
+
+        return matched_units or fallback_units
 
     def _score_obligation_alignment(self, requirement_clean: str, section_clean: str) -> float:
         obligation_terms = {
@@ -246,6 +304,28 @@ class GapAnalysisAgent:
 
         words = set(text.split())
         return {word for word in words if len(word) > 3 and word not in stop_words}
+
+    def _change_type_keywords(self, change_type: str, domain: str) -> Set[str]:
+        keywords: Set[str] = set()
+
+        if domain == "KYC":
+            keywords.update({"kyc", "identity", "onboarding", "due", "diligence"})
+        elif domain == "AML":
+            keywords.update({"monitoring", "screening", "alerts", "case", "reporting"})
+
+        mapping = {
+            "kyc_requirement": {"identity", "verify", "verification", "onboarding"},
+            "enhanced_due_diligence_requirement": {"due", "diligence", "risk", "review"},
+            "record_retention_requirement": {"records", "storage", "repository"},
+            "deadline_requirement": {"deadline", "review", "tracker"},
+            "threshold_update": {"threshold", "review", "risk"},
+            "prohibition": {"compliance", "review"},
+            "transaction_monitoring_requirement": {"monitoring", "alerts", "reporting"},
+            "alert_escalation_requirement": {"alerts", "escalation", "compliance"},
+        }
+
+        keywords.update(mapping.get(change_type, set()))
+        return keywords
 
     def _classify_coverage(
         self,
