@@ -11,7 +11,7 @@ import yaml
 
 
 TEXT_EXTENSIONS = {".txt", ".md"}
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 HTML_EXTENSIONS = {".html", ".htm"}
 PDF_EXTENSIONS = {".pdf"}
 
